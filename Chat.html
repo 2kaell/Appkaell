@@ -68,5 +68,40 @@
       chatBox.scrollTop = chatBox.scrollHeight;
     });
   </script>
+
+  
+<a href="/admin" onclick="return promptAdminPassword()">Admin</a>
+
+
+
+<script>
+  function promptAdminPassword() {
+    const password = prompt("Mot de passe admin :");
+    
+    // Appel au serveur via une requête POST pour valider le mot de passe
+    fetch('http://localhost:5001/auth', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ password: password })
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        window.location.href = "/admin"; // mot de passe correct → redirection
+      } else {
+        alert("❌ Mot de passe incorrect !");
+      }
+    })
+    .catch(() => {
+      alert("⚠️ Erreur de connexion au serveur");
+    });
+
+    return false; // Empêche le lien de rediriger immédiatement
+  }
+</script>
+
+
 </body>
 </html>
