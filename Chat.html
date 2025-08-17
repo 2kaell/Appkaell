@@ -1,107 +1,223 @@
 <!DOCTYPE html>
-<html>
+<html lang="fr">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Mon Chat Communautaire</title>
   <style>
-    body { font-family: sans-serif; background: #f5f5f5; padding: 20px; }
-    #chat-box { height: 300px; overflow-y: scroll; border: 1px solid #ccc; background: white; padding: 10px; margin-bottom: 10px; }
-    input, button { padding: 10px; margin: 5px; }
+    @import url('https://fonts.googleapis.com/css2?family=Inter&display=swap');
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #eef2f7;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+    }
+
+    h1 {
+      color: #334e68;
+      margin-bottom: 20px;
+      text-shadow: 1px 1px 3px #cbd5e1;
+    }
+
+    #chat-box {
+      width: 100%;
+      max-width: 600px;
+      height: 350px;
+      overflow-y: auto;
+      border-radius: 12px;
+      background: white;
+      padding: 15px 20px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+      border: 1px solid #cbd5e1;
+      margin-bottom: 15px;
+    }
+
+    /* Animation pour apparition des messages */
+    .message {
+      opacity: 0;
+      transform: translateX(-20px);
+      animation: slideIn 0.4s forwards;
+      margin-bottom: 12px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      background: #f0f4f8;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      transition: background-color 0.3s ease;
+    }
+    .message:hover {
+      background-color: #d0e2ff;
+    }
+
+    .message strong {
+      color: #1e293b;
+      margin-right: 6px;
+    }
+
+    @keyframes slideIn {
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+
+    #form-container {
+      max-width: 600px;
+      width: 100%;
+      display: flex;
+      gap: 10px;
+      margin-bottom: 25px;
+    }
+
+    input[type="text"] {
+      flex: 1;
+      padding: 12px 15px;
+      font-size: 1rem;
+      border: 1.5px solid #cbd5e1;
+      border-radius: 8px;
+      outline-offset: 2px;
+      transition: border-color 0.3s ease;
+    }
+
+    input[type="text"]:focus {
+      border-color: #2563eb;
+      outline: none;
+      box-shadow: 0 0 6px #2563ebaa;
+    }
+
+    #username {
+      max-width: 150px;
+    }
+
+    button {
+      padding: 12px 25px;
+      font-size: 1rem;
+      background-color: #2563eb;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+      user-select: none;
+    }
+
+    button:hover {
+      background-color: #1d4ed8;
+    }
+
+    a#admin-link {
+      color: #2563eb;
+      text-decoration: none;
+      font-weight: 600;
+      margin-top: auto;
+      cursor: pointer;
+    }
+
+    a#admin-link:hover {
+      text-decoration: underline;
+    }
+
   </style>
 </head>
 <body>
+
   <h1>Bienvenue sur le Chat !</h1>
-  <div id="chat-box"></div>
-  <input type="text" id="username" placeholder="Ton pseudo" />
-  <input type="text" id="message" placeholder="Écris ton message..." />
-  <button onclick="sendMessage()">Envoyer</button>
 
+  <div id="chat-box" aria-live="polite" aria-label="Zone de discussion"></div>
 
+  <div id="form-container">
+    <input type="text" id="username" placeholder="Ton pseudo" autocomplete="off" aria-label="Pseudo" />
+    <input type="text" id="message" placeholder="Écris ton message..." autocomplete="off" aria-label="Message" />
+    <button id="sendBtn" aria-label="Envoyer le message">Envoyer</button>
+  </div>
 
-  <!-- Firebase SDK (compat mode) -->
-  
+  <a href="/admin" id="admin-link" onclick="return promptAdminPassword()">Admin</a>
 
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
-
+  <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
   <script>
-    // Configuration Firebase
-    const firebaseConfig = {
-      apiKey: "AIzaSyAayX0yoC9kESc-QAnrOvMUoanummDQ92U",
-      authDomain: "posetonprobleme.firebaseapp.com",
-      databaseURL: "https://posetonprobleme-default-rtdb.firebaseio.com",
-      projectId: "posetonprobleme",
-      storageBucket: "posetonprobleme.appspot.com",
-      messagingSenderId: "172852914305",
-      appId: "1:172852914305:web:9c1dd2fb973fbe0d81c580",
-      measurementId: "G-VM5V3WTWKW"
-    };
+    const socket = io('http://localhost:5000'); // adapte ici selon ton serveur
 
- //Initialiser Firebase
- firebase.initializeApp(firebaseConfig);
- 
- //Initialiser firestore
- const db=firebase.database();
+    const chatBox = document.getElementById('chat-box');
+    const usernameInput = document.getElementById('username');
+    const messageInput = document.getElementById('message');
+    const sendBtn = document.getElementById('sendBtn');
 
-    // Envoi d’un message
-    function sendMessage() {
-      //db.ref("messages").push({ name: username, text: message });
-      const username = document.getElementById("username").value;
-      const message = document.getElementById("message").value;
-      if (username && message) {
-        //db.ref("messages").push({ name: username, text: message });
-        document.getElementById("message").value = "";
-      }
-
-      db.ref("messages").push({
-  name: username,
-  text: message,
-  timestamp: Date.now()
-});
+    // Fonction pour ajouter un message avec animation
+    function addMessage(msg) {
+      const p = document.createElement('p');
+      p.classList.add('message');
+      p.innerHTML = `<strong>${escapeHtml(msg.name)}:</strong> ${escapeHtml(msg.text)}`;
+      chatBox.appendChild(p);
+      chatBox.scrollTo({ top: chatBox.scrollHeight, behavior: 'smooth' });
     }
 
-    // Affichage en temps réel
-    db.ref("messages").on("child_added", function(snapshot) {
-      const msg = snapshot.val();
-      const chatBox = document.getElementById("chat-box");
-      chatBox.innerHTML += `<p><strong>${msg.name}:</strong> ${msg.text}</p>`;
-      chatBox.scrollTop = chatBox.scrollHeight;
-    });
-  </script>
+    // Sécurité basique contre injection HTML
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
 
-  
-<a href="/admin" onclick="return promptAdminPassword()">Admin</a>
+    // Récupérer les messages existants (via REST API)
+    fetch('http://localhost:5000/messages')
+      .then(res => res.json())
+      .then(data => data.forEach(addMessage))
+      .catch(console.error);
 
+    // Écoute des nouveaux messages en temps réel
+    socket.on('message', addMessage);
 
-
-<script>
-  function promptAdminPassword() {
-    const password = prompt("Mot de passe admin :");
-    
-    // Appel au serveur via une requête POST pour valider le mot de passe
-    fetch('http://localhost:5001/auth', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ password: password })
-    })
-    .then(res => res.json())
-    .then(data => {
-      if (data.success) {
-        window.location.href = "/admin"; // mot de passe correct → redirection
-      } else {
-        alert("❌ Mot de passe incorrect !");
+    // Envoi de message au serveur
+    sendBtn.onclick = () => {
+      const name = usernameInput.value.trim();
+      const text = messageInput.value.trim();
+      if (!name || !text) {
+        alert('Veuillez saisir un pseudo et un message.');
+        return;
       }
-    })
-    .catch(() => {
-      alert("⚠️ Erreur de connexion au serveur");
+      const msg = { name, text };
+      socket.emit('message', msg);
+      messageInput.value = '';
+      messageInput.focus();
+    };
+
+    // Permet d’envoyer le message avec la touche Entrée dans le champ message
+    messageInput.addEventListener('keypress', e => {
+      if (e.key === 'Enter') {
+        sendBtn.click();
+      }
     });
 
-    return false; // Empêche le lien de rediriger immédiatement
-  }
-</script>
+    // Fonction pour demander le mot de passe admin
+    function promptAdminPassword() {
+      const password = prompt('Mot de passe admin :');
+      if (!password) return false;
 
+      fetch('http://localhost:5000/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password }),
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          window.location.href = '/admin';
+        } else {
+          alert('❌ Mot de passe incorrect !');
+        }
+      })
+      .catch(() => alert('⚠️ Erreur de connexion au serveur'));
+
+      return false; // Empêche la navigation par défaut
+    }
+  </script>
 
 </body>
 </html>
